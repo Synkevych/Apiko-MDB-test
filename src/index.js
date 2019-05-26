@@ -1,3 +1,5 @@
+import "./styles.css";
+
 let app = {};
 app.Movies = function() {
   this.apikey = "https://api.themoviedb.org/3/";
@@ -16,12 +18,12 @@ app.Movies.prototype = {
   },
   createElem: function(tagName, results) {
     let newElem = document.createElement(tagName);
-    if (tagName == "img") {
+    if (tagName === "img") {
       newElem.setAttribute(
         "src",
         "http://image.tmdb.org/t/p" + this.image_size + results
       );
-    } else if (tagName == "a") {
+    } else if (tagName === "a") {
       let title = results.original_title
         ? results.original_title
         : results.original_name;
@@ -32,7 +34,7 @@ app.Movies.prototype = {
         "click",
         function(evt) {
           evt.preventDefault();
-          this.removeLink();
+          this.removeElements();
           this.getImage(
             results.backdrop_path ? results.backdrop_path : results.logo_path
           );
@@ -57,31 +59,47 @@ app.Movies.prototype = {
       "&query=" +
       this.inputValue.value +
       "&page=1";
-    this.error(url, "movie");
-    this.removeLink();
+    this.request(url, "movie");
+    this.removeElements();
     this.movie.results.map(num => {
       this.createElem("a", num);
     });
+    return;
   },
-  error: function(url, name) {
-    let request = new XMLHttpRequest();
-    request.open("GET", url, false);
-    request.send();
-    if (request.status == 200) {
-      this[name] = JSON.parse(request.responseText);
-      this[name].results.map(num => {
-        this.createElem("a", num);
+
+  request: function(url, name) {
+    fetch(url)
+      .then(response => {
+        if (response.status !== 200) {
+          return Promise.reject({
+            status: response.status,
+            statusText: response.statusText
+          });
+        }
+        return (response = response.json());
+      })
+      .then(data => {
+        if (data.total_results === 0) {
+          return Promise.reject({
+            statusText: "Not found items."
+          });
+        } else
+          data.results.map(num => {
+            this.createElem("a", num);
+          });
+      })
+      .catch(error => {
+        console.log("Fetch error: " + error.status, error.statusText);
+        this.createElem(
+          "p",
+          "Looks like there was a problem. <br> Status Code : " +
+            error.statusText
+        );
       });
-    } else {
-      this.createElem(
-        "p",
-        name.charAt(0).toUpperCase() + name.slice(1) + " not found."
-      );
-    }
   },
 
   getMovies: function() {
-    this.error(this.trending, "movie");
+    this.request(this.trending, "movie");
   },
 
   setLinks: function() {
@@ -103,10 +121,10 @@ app.Movies.prototype = {
     let url =
       this.apikey + "movie/" + id + "/recommendations?api_key=" + this.key;
     this.createElem("h3", "Recomendations:");
-    this.error(url, "recomendation");
+    this.request(url, "recomendation");
   },
 
-  removeLink: function() {
+  removeElements: function() {
     while (this.parent.firstChild) {
       this.parent.removeChild(this.parent.firstChild);
     }
@@ -116,12 +134,31 @@ app.Movies.prototype = {
 let start = new app.Movies();
 start.init();
 
-let reload = document.getElementById("search");
-reload.addEventListener("click", function() {
-  if (start.inputValue.value) {
-    start.getMovieByName();
-  } else {
-    start.removeLink();
-    start.init();
+let reload = [
+  document.getElementById("search"),
+  document.getElementById("home"),
+  document.getElementById("data")
+];
+reload.map(element => {
+  if (element.id === "data") {
+    element.onkeydown = function(e) {
+      if (e.keyCode === 13) {
+        start.getMovieByName();
+      }
+    };
   }
+  if (element.id === "home") {
+    element.addEventListener("click", function() {
+      start.removeElements();
+      start.init();
+    });
+  }
+  element.addEventListener("click", function() {
+    if (start.inputValue.value) {
+      start.getMovieByName();
+    } else {
+      start.removeElements();
+      start.init();
+    }
+  });
 });
