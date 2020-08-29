@@ -1,5 +1,3 @@
-import "./styles.css";
-
 let app = {};
 app.Movies = function() {
   this.apikey = "https://api.themoviedb.org/3/";
@@ -14,7 +12,7 @@ app.Movies = function() {
 
 app.Movies.prototype = {
   init: function() {
-    this.getMovies();
+    this.getTrendingMovies();
   },
   createElem: function(tagName, results) {
     let newElem = document.createElement(tagName);
@@ -51,6 +49,7 @@ app.Movies.prototype = {
     }
     this.parent.appendChild(newElem);
   },
+
   getMovieByName: function() {
     let url =
       this.apikey +
@@ -61,13 +60,9 @@ app.Movies.prototype = {
       "&page=1";
     this.request(url, "movie");
     this.removeElements();
-    this.movie.results.map(num => {
-      this.createElem("a", num);
-    });
-    return;
   },
 
-  request: function(url, name) {
+  request: function(url) {
     fetch(url)
       .then(response => {
         if (response.status !== 200) {
@@ -84,9 +79,9 @@ app.Movies.prototype = {
             statusText: "Not found items."
           });
         } else
-          data.results.map(num => {
-            this.createElem("a", num);
-          });
+        this.movie = data.results;
+        console.log(this.movie);
+        this.renderMovieLink();
       })
       .catch(error => {
         console.log("Fetch error: " + error.status, error.statusText);
@@ -98,8 +93,8 @@ app.Movies.prototype = {
       });
   },
 
-  getMovies: function() {
-    this.request(this.trending, "movie");
+  getTrendingMovies: function() {
+    this.request(this.trending);
   },
 
   setLinks: function() {
@@ -114,9 +109,17 @@ app.Movies.prototype = {
       );
     }
   },
+
+  renderMovieLink: function(){
+    this.movie.map(num => {
+      this.createElem("a", num);
+    });
+  },
+
   getImage: function(obj) {
     start.createElem("img", obj);
   },
+
   getRecomendation: function(id) {
     let url =
       this.apikey + "movie/" + id + "/recommendations?api_key=" + this.key;
@@ -125,8 +128,9 @@ app.Movies.prototype = {
   },
 
   removeElements: function() {
-    while (this.parent.firstChild) {
-      this.parent.removeChild(this.parent.firstChild);
+    let linkArray =  document.getElementById("app");
+    while (linkArray.firstChild) {
+      linkArray.innerHTML = '';
     }
   }
 };
@@ -139,6 +143,7 @@ let reload = [
   document.getElementById("home"),
   document.getElementById("data")
 ];
+
 reload.map(element => {
   if (element.id === "data") {
     element.onkeydown = function(e) {
@@ -146,19 +151,21 @@ reload.map(element => {
         start.getMovieByName();
       }
     };
-  }
+  };
   if (element.id === "home") {
     element.addEventListener("click", function() {
       start.removeElements();
       start.init();
     });
-  }
-  element.addEventListener("click", function() {
-    if (start.inputValue.value) {
-      start.getMovieByName();
-    } else {
-      start.removeElements();
-      start.init();
-    }
-  });
+  };
+  if (element.id === "search") {
+    element.addEventListener("click", function() {
+      if (start.inputValue.value) {
+        start.getMovieByName();
+      } else {
+        start.removeElements();
+        start.init();
+      }
+    });
+  };
 });
